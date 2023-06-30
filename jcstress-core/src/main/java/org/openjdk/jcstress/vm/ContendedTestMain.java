@@ -38,46 +38,53 @@ public class ContendedTestMain {
 
     private static final int PADDING_WIDTH = 64;
 
+    private static boolean isRunningOnOpenJ9() {
+        String jvmName = System.getProperty("java.vm.name");
+        return jvmName.contains("OpenJ9");
+    }
+
     public static void main(String... args) throws IOException {
-        List<String> msgs = Collections.synchronizedList(new ArrayList<>());
+        if(!isRunningOnOpenJ9()) {
+            List<String> msgs = Collections.synchronizedList(new ArrayList<>());
 
-        Collection<Class<?>> classes = Reflections.getClasses("Result");
-        if (classes.isEmpty()) {
-            throw new IllegalStateException("Classes not found");
-        }
-
-        for (Class<?> cl : classes) {
-            if (cl.getAnnotation(Result.class) == null) continue;
-
-            List<FieldDef> fdefs = new ArrayList<>();
-            for (Field f : cl.getDeclaredFields()) {
-                if (Modifier.isStatic(f.getModifiers())) continue;
-                fdefs.add(new FieldDef(f));
+            Collection<Class<?>> classes = Reflections.getClasses("Result");
+            if (classes.isEmpty()) {
+                throw new IllegalStateException("Classes not found");
             }
 
-            Collections.sort(fdefs);
+            for (Class<?> cl : classes) {
+                if (cl.getAnnotation(Result.class) == null) continue;
 
-            FieldDef last = null;
-            for (FieldDef fd : fdefs) {
-                if (fd.offset < PADDING_WIDTH) {
-                    msgs.add("Class " + cl + ": field " + fd.field.getName() + " is not padded");
+                List<FieldDef> fdefs = new ArrayList<>();
+                for (Field f : cl.getDeclaredFields()) {
+                    if (Modifier.isStatic(f.getModifiers())) continue;
+                    fdefs.add(new FieldDef(f));
                 }
 
-                if (last != null) {
-                    if (Math.abs(fd.offset - last.offset) < PADDING_WIDTH) {
-                        msgs.add("Class " + cl + ": fields " + fd.field.getName() + " and " + last.field.getName() + " are not padded pairwise");
+                Collections.sort(fdefs);
+
+                FieldDef last = null;
+                for (FieldDef fd : fdefs) {
+                    if (fd.offset < PADDING_WIDTH) {
+                        msgs.add("Class " + cl + ": field " + fd.field.getName() + " is not padded");
                     }
+
+                    if (last != null) {
+                        if (Math.abs(fd.offset - last.offset) < PADDING_WIDTH) {
+                            msgs.add("Class " + cl + ": fields " + fd.field.getName() + " and " + last.field.getName() + " are not padded pairwise");
+                        }
+                    }
+
+                    last = fd;
                 }
-
-                last = fd;
             }
-        }
 
-        if (!msgs.isEmpty()) {
-            for (String msg : msgs) {
-                System.out.println(msg);
+            if (!msgs.isEmpty()) {
+                for (String msg : msgs) {
+                    System.out.println(msg);
+                }
+                throw new IllegalStateException("@Contended does not seem to work properly");
             }
-            throw new IllegalStateException("@Contended does not seem to work properly");
         }
     }
 
