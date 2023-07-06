@@ -39,8 +39,15 @@ public class ContendedTestMain {
     private static final int PADDING_WIDTH = 64;
 
     private static boolean isRunningOnOpenJ9() {
-        String jvmName = System.getProperty("java.vm.name");
-        return jvmName.contains("OpenJ9");
+        String impl = System.getProperty("java.vm.name");
+        System.out.println("System.getProperty('java.vm.name')=" + impl + "\n");
+        impl = impl.toLowerCase();
+        if (impl.contains("ibm")) {
+            return true;
+        } else if (impl.contains("openj9")) {
+            return true;
+        }
+        return false;
     }
 
     public static void main(String... args) throws IOException {
